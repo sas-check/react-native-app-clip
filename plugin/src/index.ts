@@ -1,4 +1,4 @@
-import { IOSConfig, withPlugins, type ConfigPlugin } from "expo/config-plugins";
+import { IOSConfig, type ConfigPlugin } from "expo/config-plugins";
 
 import { withConfig } from "./withConfig";
 import { withEntitlements } from "./withEntitlements";
@@ -38,6 +38,8 @@ const withAppClip: ConfigPlugin<{
   targetSuffix ??= "Clip";
   deploymentTarget ??= "14.0";
   appleSignin ??= false;
+  requestEphemeralUserNotification ??= false;
+  requestLocationConfirmation ??= false;
 
   if (!config.ios?.bundleIdentifier) {
     throw new Error("No bundle identifier specified in app config");
@@ -46,36 +48,32 @@ const withAppClip: ConfigPlugin<{
   const bundleIdentifier = `${config.ios.bundleIdentifier}.${bundleIdSuffix}`;
   const targetName = `${IOSConfig.XcodeUtils.sanitizedName(config.name)}${targetSuffix}`;
 
-  const modifiedConfig = withPlugins(config, [
-    [withDeviceFamily, config],
-    [
-      withConfig,
-      { targetName, bundleIdentifier, appleSignin, applePayMerchantIds },
-    ],
-    [
-      withEntitlements,
-      { targetName, groupIdentifier, appleSignin, applePayMerchantIds },
-    ],
-    [withPodfile, { targetName, excludedPackages }],
-    [
-      withPlist,
-      {
-        targetName,
-        deploymentTarget,
-        requestEphemeralUserNotification,
-        requestLocationConfirmation,
-      },
-    ],
-    [
-      withXcode,
-      {
-        name,
-        targetName,
-        bundleIdentifier,
-        deploymentTarget,
-      },
-    ],
-  ]);
+  const modifiedConfig = withConfig(
+    withEntitlements(
+      withPodfile(
+        withPlist(
+          withXcode(
+            withDeviceFamily(config),
+            {
+              name,
+              targetName,
+              bundleIdentifier,
+              deploymentTarget,
+            }
+          ),
+          {
+            targetName,
+            deploymentTarget,
+            requestEphemeralUserNotification,
+            requestLocationConfirmation,
+          }
+        ),
+        { targetName, excludedPackages }
+      ),
+      { targetName, groupIdentifier: groupIdentifier ?? '', appleSignin, applePayMerchantIds: applePayMerchantIds ?? [] }
+    ),
+    { targetName, bundleIdentifier, appleSignin, applePayMerchantIds: applePayMerchantIds ?? [] }
+  );
 
   return modifiedConfig;
 };
